@@ -37,7 +37,7 @@ class ResponseError(Error):
                 status_code,
                 text))
         self.status_code = status_code
-        self.text = json.loads(text)
+        self.text = text
 
 class Session(object):
     """ Senz Wifi session
@@ -144,32 +144,52 @@ class Session(object):
             print("--- raw ending    ---\n")
 
         self._groups = json.loads(response.text)
-        self._devices = None
+     
 
-    def get_devices(self, group=None):
-        if self._vid is None:
+    def get_devices(self):
+        if self._sessionId is None:
             self.login()
 
-        if self._devices is None:
-            self._devices = []
+        try:
+            response = requests.get(urls.get_devices(self._sessionId),headers=self._headers(), verify=self._verifySsl)
 
-            for group in self._groups['groupList']:
-                for device in group['deviceIdList']:
-                    if device:
-                        id = None
-                        if 'deviceHashGuid' in device:
-                            id = device['deviceHashGuid']
-                        else:
-                            id = hashlib.md5(device['deviceGuid'].encode('utf-8')).hexdigest()
+            if 2 != response.status_code // 100:
+                raise ResponseError(response.status_code, response.text)
 
-                        self._deviceIndexer[id] = device['deviceGuid']
-                        self._devices.append({
-                            'id': id,
-                            'name': device['deviceName'],
-                            'group': group['groupName'],
-                            'model': device['deviceModuleNumber'] if 'deviceModuleNumber' in device else ''
-                        })
+        except requests.exceptions.RequestException as ex:
+            raise RequestError(ex)
 
-        return self._devices
+        _validate_response(response)
 
+        if(self._raw is True):
+            print("--- get_devices()")
+            print("--- raw beginning ---")
+            print(response.text)
+            print("--- raw ending    ---\n")
+
+        devices = json.loads(response.text)
+        return devices
+
+    def get_device(self, serial):
+        if self._sessionId is None:
+            self.login()
+
+        try:
+            response = requests.get(urls.get_device(self._sessionId, serial),headers=self._headers(), verify=self._verifySsl)
+
+            if 2 != response.status_code // 100:
+                raise ResponseError(response.status_code, response.text)
+
+        except requests.exceptions.RequestException as ex:
+            raise RequestError(ex)
+
+        _validate_response(response)
+
+        if(self._raw is True):
+            print(f"--- get_device({serial})")
+            print("--- raw beginning ---")
+            print(response.text)
+            print("--- raw ending    ---\n")
+
+        return json.loads(response.text)
     
