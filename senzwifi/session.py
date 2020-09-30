@@ -167,7 +167,15 @@ class Session(object):
             print(response.text)
             print("--- raw ending    ---\n")
 
-        devices = json.loads(response.text)
+        devices = []
+        data = json.loads(response.text)
+        for group in data['Groups']:
+            for device in group['Thermostats']:
+                devices.append({
+                    'serial': device['SerialNumber'],
+                    'name': device['Room'],
+                    'group': device['GroupName']
+                })
         return devices
 
     def get_device(self, serial):
